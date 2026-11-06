@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>PEBP Mold Workflow</title>
+<meta name="description" content="How to cast a pre-epiglottic baton plate in cold-cure PMMA using 3D-printed tooling, with an interactive demold sequence. Research and demonstration only.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: a bench manual that opens on the live mold; the viewer's part colours carry through the tables. */
+:root {
+  --paper:#f2f6f7; --sheet:#ffffff; --stage:#e6edf0; --ink:#13212b; --muted:#536470; --rule:#d3dde2;
+  --accent:#0a6a72; --pass:#14744a; --warn-bg:#fbf1d8; --warn-ink:#5f4005;
+  --display:"Barlow Semi Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper:#0e1519; --sheet:#151e24; --stage:#101a20; --ink:#e4ebef; --muted:#9fb1bb; --rule:#2b3841;
+    --accent:#5cc6cc; --pass:#58cc90; --warn-bg:#2d2410; --warn-ink:#f1d28e; color-scheme:dark; }
+}
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+html { scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 1.0625rem/1.62 var(--body); }
+.wrap { max-width:1120px; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+h1,h2,h3 { font-family:var(--display); font-weight:600; line-height:1.12; text-wrap:balance; margin:0; }
+h1 { font-size:clamp(2.1rem,5vw,3.25rem); max-width:24ch; }
+.nb { white-space:nowrap; }
+h2 { font-size:1.9rem; }
+h3 { font-size:1.3rem; }
+p { margin:0; }
+a { color:var(--accent); text-underline-offset:2px; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.eyebrow { font:500 .86rem/1.3 var(--display); letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.lede { max-width:68ch; }
+.top { padding-block:clamp(32px,6vw,60px) 28px; }
+.top .wrap { display:grid; gap:18px; }
+
+.block { display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule); }
+.cell { background:var(--sheet); padding:10px 12px; display:grid; gap:2px; align-content:start; min-width:0; }
+.cell b { font:500 .76rem/1.25 var(--display); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.cell span { font:500 .93rem/1.3 var(--mono); font-variant-numeric:tabular-nums; }
+@media (max-width:860px) { .block { grid-template-columns:repeat(3,1fr); } }
+@media (max-width:500px) { .block { grid-template-columns:repeat(2,1fr); } }
+
+.status { background:var(--warn-bg); color:var(--warn-ink); padding:14px 16px; font:400 1.08rem/1.4 var(--display); max-width:100%; }
+.status strong { font-weight:600; }
+.contents { display:flex; flex-wrap:wrap; gap:4px 18px; font:500 1.02rem/1.5 var(--display); }
+
+main { display:grid; gap:clamp(44px,7vw,72px); padding-block:8px 64px; }
+section { display:grid; gap:16px; min-width:0; scroll-margin-top:16px; }
+.prose { max-width:68ch; display:grid; gap:.85em; }
+ol,ul { margin:0; padding-left:1.25em; display:grid; gap:.35em; }
+
+.viewer { display:grid; grid-template-columns:minmax(0,1fr) 312px; background:var(--sheet); border:1px solid var(--rule); }
+.canvas-wrap { position:relative; min-height:500px; background:var(--stage); min-width:0; }
+.canvas-wrap canvas { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:pan-y; cursor:grab; }
+.canvas-wrap canvas:active { cursor:grabbing; }
+#phase { position:absolute; left:10px; top:10px; padding:3px 8px; background:var(--sheet); font:600 1.04rem/1.25 var(--display); pointer-events:none; }
+.hint { position:absolute; left:12px; right:12px; bottom:8px; font:400 .84rem/1.3 var(--display); color:var(--muted); pointer-events:none; }
+#viewer-note { position:absolute; inset:0; display:grid; place-items:center; padding:24px; text-align:center; font:400 1.05rem/1.4 var(--display); color:var(--muted); }
+.panel { padding:16px; display:grid; gap:14px; align-content:start; border-left:1px solid var(--rule); font-family:var(--display); min-width:0; }
+.panel label.field { display:grid; gap:4px; font:500 .8rem/1.3 var(--display); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.panel input[type=range] { width:100%; accent-color:var(--accent); margin:0; }
+.btns { display:flex; flex-wrap:wrap; gap:6px; }
+.btn { font:500 .96rem/1 var(--display); padding:8px 10px; min-height:34px; border:1px solid var(--rule); background:var(--paper); color:var(--ink); cursor:pointer; }
+.btn:hover { border-color:var(--accent); }
+.btn[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+.parts { display:grid; gap:1px; }
+.parts label { display:grid; grid-template-columns:16px 12px minmax(0,1fr); gap:8px; align-items:center; padding:5px 0; font:400 1rem/1.25 var(--display); cursor:pointer; }
+.parts input { margin:0; accent-color:var(--accent); }
+.sw { display:inline-block; width:12px; height:12px; border:1px solid var(--rule); flex:none; }
+figcaption { font:400 .98rem/1.45 var(--display); color:var(--muted); max-width:78ch; padding-top:8px; }
+figure { margin:0; min-width:0; }
+@media (max-width:860px) {
+  .viewer { grid-template-columns:minmax(0,1fr); }
+  .canvas-wrap { min-height:0; aspect-ratio:1/1; max-width:100%; }
+  .panel { border-left:0; border-top:1px solid var(--rule); }
+}
+
+.table-wrap { overflow-x:auto; min-width:0; }
+table { border-collapse:collapse; width:100%; font:400 1.02rem/1.38 var(--display); }
+th { font:500 .8rem/1.3 var(--display); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); text-align:left; border-bottom:1px solid var(--ink); }
+th,td { padding:8px 14px 8px 0; vertical-align:top; }
+td { border-bottom:1px solid var(--rule); }
+.wide { min-width:680px; }
+.num { font:400 .88rem/1.45 var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pass { color:var(--pass); font-weight:500; }
+.part-name { display:flex; gap:7px; align-items:baseline; font-weight:500; white-space:nowrap; }
+
+.demold { list-style:none; padding:0; gap:0; max-width:68ch; border-top:1px solid var(--rule); }
+.demold li { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--rule); }
+.demold span.what { display:flex; gap:9px; align-items:baseline; min-width:0; }
+
+.steps { list-style:none; padding:0; display:grid; gap:34px; }
+.step { display:grid; grid-template-columns:2.6rem minmax(0,1fr); }
+.step .n { font:500 1.35rem/1.2 var(--mono); color:var(--accent); }
+.step-body { max-width:68ch; display:grid; gap:.6em; min-width:0; }
+.step-body > .btn { justify-self:start; }
+
+footer { border-top:1px solid var(--rule); padding-block:20px 40px; font:400 .98rem/1.45 var(--display); color:var(--muted); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Manufacturing workflow · Research and demonstration only</p>
+    <h1>Casting a <span class="nb">pre-epiglottic</span> baton plate in a 3D-printed mold</h1>
+    <p class="lede">The pre-epiglottic baton plate, also called the Tübingen palatal plate, treats upper-airway obstruction in infants with Robin sequence. A curved extension, the baton, reaches back from a palatal plate to just above the epiglottis and holds the base of the tongue forward. This page shows how to make that appliance from a palate scan using printed tooling. The printer makes the mold. The worn appliance stays in the material the Tübingen group uses, cold-cure PMMA with a cast-in steel safety wire.</p>
+    <p class="status"><strong>Status.</strong> Checked in software on five test cases. Nothing has been printed or cast, and no clinical team has reviewed this workflow. Resin choice, fill technique and print settings all need bench tests before any appliance goes near a patient. This is not a medical device.</p>
+    <div class="block" aria-label="Key dimensions of the mold shown on this page">
+      <div class="cell"><b>Mold block</b><span>46.3 × 62.1 × 36.3 mm</span></div>
+      <div class="cell"><b>Cavity</b><span>3.83 ml</span></div>
+      <div class="cell"><b>Resin to mix</b><span>≈ 5.0 ml</span></div>
+      <div class="cell"><b>Final plate</b><span>2.5 mm</span></div>
+      <div class="cell"><b>Safety wire</b><span>1.8 × 0.8 × 25.3 mm</span></div>
+      <div class="cell"><b>Wire pins</b><span>3 per side, ⌀2 mm</span></div>
+    </div>
+    <nav class="contents" aria-label="Contents">
+      <a href="#mold">3D mold</a><a href="#why">Why molds</a><a href="#kit">The kit</a><a href="#four">Why four pieces</a><a href="#workflow">Workflow</a><a href="#checks">Software checks</a><a href="#differences">Differences from the design</a><a href="#questions">Open questions</a><a href="#flexible">Flexible counter</a><a href="#sources">Sources</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="mold" aria-labelledby="mold-h">
+    <h2 id="mold-h">The mold, piece by piece</h2>
+    <figure>
+      <div class="viewer">
+        <div class="canvas-wrap">
+          <canvas id="c" aria-label="Interactive 3D model of the four-piece mold and the cast appliance"></canvas>
+          <div id="phase">Assembled</div>
+          <div class="hint">Drag to rotate · Shift-drag to pan · Pinch or ctrl-scroll to zoom · Grid 10 mm</div>
+          <div id="viewer-note">Loading the 3D mold…</div>
+        </div>
+        <div class="panel">
+          <label class="field" for="demold">Demold sequence
+            <input id="demold" type="range" min="0" max="4" step="0.01" value="0">
+          </label>
+          <div class="btns">
+            <button class="btn" id="play" type="button">Play</button>
+            <button class="btn" id="cut" type="button" aria-pressed="false">Cut-away</button>
+          </div>
+          <div class="btns" role="group" aria-label="Camera">
+            <button class="btn" type="button" data-view="iso">3D</button>
+            <button class="btn" type="button" data-view="front">Front</button>
+            <button class="btn" type="button" data-view="side">Side</button>
+            <button class="btn" type="button" data-view="top">Top</button>
+            <button class="btn" type="button" data-zoom="0.85" aria-label="Zoom in">+</button>
+            <button class="btn" type="button" data-zoom="1.18" aria-label="Zoom out">−</button>
+          </div>
+          <div class="parts" id="parts"></div>
+        </div>
+      </div>
+      <figcaption>The palate is synthetic, built from published means for neonates with Robin sequence (Willershausen et al. 2024), with a baton calibrated to the Tübingen drawing. No patient scan is used anywhere on this page. Shown in pour orientation: model base on the bench, sprue opening upward.</figcaption>
+    </figure>
+  </section>
+
+  <section id="why" aria-labelledby="why-h">
+    <h2 id="why-h">Why molds instead of printing the appliance</h2>
+    <div class="prose">
+      <p>Biocompatible PolyJet resins are rated for limited mucosal contact, under 24 hours. That is fine for the three prototypes tried in during awake nasopharyngoscopy, which are in the mouth for minutes. It is not enough for an appliance worn around the clock for weeks.</p>
+      <p>The Tübingen appliance is cold-cure PMMA (Orthocryl). So the printer's job becomes making precise tooling, and the appliance itself stays in a material with a long clinical track record.</p>
+    </div>
+  </section>
+
+  <section id="kit" aria-labelledby="kit-h">
+    <h2 id="kit-h">The kit</h2>
+    <div class="table-wrap">
+      <table class="wide">
+        <thead><tr><th scope="col">Part</th><th scope="col">What it does</th><th scope="col">Comes off</th><th scope="col">Print in</th></tr></thead>
+        <tbody>
+          <tr><td><span class="part-name"><i class="sw" style="background:#b9bec6"></i>Working model</span></td><td>The palate with the cleft blocked out. Forms the tissue side of the plate.</td><td>Stays on the bench</td><td>Rigid dental model resin, or a separation-model resin if available</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#4fb3a5"></i>Oral counter</span></td><td>Forms the oral surface of the plate. Carries three air vents and two bow-wire grooves.</td><td>Lifts straight up</td><td>Rigid resin that tolerates the 40 °C pressure cure</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#e2a33c"></i><i class="sw" style="background:#8f7ae6"></i>Baton halves</span></td><td>Left and right halves enclose the baton, split down its middle. Together they form the pour sprue at the tip. Each holds three notched wire pins.</td><td>Slide off sideways</td><td>Same rigid resin</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#9aa3ad"></i>Cradle</span></td><td>Open tray that keeps the four pieces closed during the pour and the cure.</td><td>Lift out</td><td>FDM PLA or PETG</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#7aa0c4"></i>Wire jig</span></td><td>1:1 template for bending the safety wire.</td><td>Not in the mold</td><td>Any rigid resin or FDM</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#59616b"></i>Safety wire</span></td><td>Twisted stainless wire, 1.8 × 0.8 mm, held centred by the pins during the pour.</td><td>Stays in the appliance</td><td>Not printed</td></tr>
+          <tr><td><span class="part-name"><i class="sw" style="background:#e0566b"></i>Appliance</span></td><td>What comes out of the mold. A printed copy serves as a try-in part or to check the cast part.</td><td>Last</td><td>Cast in PMMA; print for reference only</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="four" aria-labelledby="four-h">
+    <h2 id="four-h">Why four pieces</h2>
+    <div class="prose">
+      <p>The baton leaves the plate heading backwards and then curves down toward the epiglottis. A one-piece rigid mold cannot be pulled off a curve like that. So the counter-mold is split three ways, and each piece comes away along one straight line.</p>
+    </div>
+    <ol class="demold">
+      <li><span class="what"><i class="sw" style="background:#e2a33c"></i>1. The left baton half slides off to the left.</span><button class="btn" type="button" data-phase="1">Show</button></li>
+      <li><span class="what"><i class="sw" style="background:#8f7ae6"></i>2. The right baton half slides off to the right.</span><button class="btn" type="button" data-phase="2">Show</button></li>
+      <li><span class="what"><i class="sw" style="background:#4fb3a5"></i>3. The oral counter lifts straight up.</span><button class="btn" type="button" data-phase="3">Show</button></li>
+      <li><span class="what"><i class="sw" style="background:#e0566b"></i>4. The appliance lifts off the working model.</span><button class="btn" type="button" data-phase="4">Show</button></li>
+    </ol>
+    <div class="prose">
+      <p>The baton's cross-section is flat on its broad faces and rounded on its edges, so two halves split down its middle can slide apart sideways. For a baton imported from a file, the software fits the plane the baton actually lies in and splits on that plane. The published Tübingen cleft baton sits 2.6° off the left-right axis once placed, and a split on the plain axis left a thin undercut along its whole length.</p>
+    </div>
+  </section>
+
+  <section id="workflow" aria-labelledby="workflow-h">
+    <h2 id="workflow-h">Workflow</h2>
+    <ol class="steps">
+      <li class="step"><span class="n">1</span><div class="step-body"><h3>Scan and design</h3>
+        <p>Scan the maxilla. The design software finds the landmarks, blocks out the cleft, builds the plate and writes three prototypes 2 mm apart sagittally.</p></div></li>
+      <li class="step"><span class="n">2</span><div class="step-body"><h3>Prototypes for the endoscopy fitting</h3>
+        <p>Print prototypes 1 to 3 for the awake nasopharyngoscopy try-in. The software can export a multi-material version for a Stratasys printer using the MED-series biocompatible resins. A biocompatible dental resin on an SLA printer is the alternative. Either way, the clinical team decides which material it accepts for a few minutes of mucosal contact.</p></div></li>
+      <li class="step"><span class="n">3</span><div class="step-body"><h3>Lock the design</h3>
+        <p>Record the endoscopy result, for example a shorter baton or a 2 mm anterior shift, and mark it final. The tooling is built from the last recorded adjustment. If there is none, it uses prototype 2.</p></div></li>
+      <li class="step"><span class="n">4</span><div class="step-body"><h3>Generate and check the tooling</h3>
+        <p>The software writes every part of the kit and runs the <a href="#checks">checks below</a>. It reports success only if every check passes. Step through the demold sequence in the viewer before printing.</p></div></li>
+      <li class="step"><span class="n">5</span><div class="step-body"><h3>Print</h3>
+        <ul>
+          <li><strong>Orientation.</strong> Keep supports off every molding surface. Print the working model base-down. Print the oral counter upside down, flat top on the plate and cavity up. Print each baton half on its outer side face, so the split face with the cavity and pins faces up.</li>
+          <li><strong>Layers.</strong> Use 50 µm or finer for the model and counters.</li>
+          <li><strong>Post-processing.</strong> Wash and post-cure fully to the resin maker's instructions. Under-cured resin is more likely to interact with methacrylate monomer.</li>
+          <li><strong>Inspect.</strong> Under magnification, check the six wire pins: 2 mm diameter, with a slot that fits the 0.8 mm wire. Dry-fit all four pieces in the cradle.</li>
+        </ul></div></li>
+      <li class="step"><span class="n">6</span><div class="step-body"><h3>Prepare the mold</h3>
+        <ol>
+          <li><strong>Separator.</strong> Coat every molding surface with a separating medium suited to acrylic on printed models, unless the part is printed in a separation-model resin sold for use without one. Uncoated spots can bond.</li>
+          <li><strong>Safety wire.</strong> Cut the 1.8 × 0.8 mm twisted stainless wire to length, about 25 mm here. Bend it flatwise on the jig until it lies in the groove along its whole length.</li>
+          <li><strong>Bow wires.</strong> Bend the retention end of each 1.1 mm Remaloy bow wire so it sits in the middle of the plate thickness, inside the cavity.</li>
+          <li><strong>Seat the wire.</strong> Lay the left half split-face up and press the safety wire into the slots of its three pins. Close the right half over it.</li>
+          <li><strong>Close the mold.</strong> Set the oral counter on the working model and the baton halves behind it. Drop the bow wires into their grooves on the parting line. Set everything into the cradle.</li>
+          <li><strong>Seal.</strong> Close the outer ends of the bow grooves with wax. Hold the oral counter down with a clamp or an elastic band.</li>
+        </ol>
+        <button class="btn" type="button" id="show-wire">Show the wire and pins in the cut-away</button></div></li>
+      <li class="step"><span class="n">7</span><div class="step-body"><h3>Fill</h3>
+        <p>Tübingen builds the final plate with Orthocryl by the sprinkle (salt-and-pepper) technique on an open model. A closed mold needs a resin that flows: either a pour-type cold-cure PMMA, or the lab's usual resin mixed thinner. This is the main open decision and needs a bench test for porosity and working time.</p>
+        <p>Fill a syringe and inject slowly through the sprue at the baton tip until resin appears at all three vents and both bow grooves. Tap the cradle to release bubbles. The rim of the plate is the high ground when poured, which is why the vents sit there.</p></div></li>
+      <li class="step"><span class="n">8</span><div class="step-body"><h3>Cure</h3>
+        <p>Put the whole cradle into the pressure pot. Tübingen cures at 2.2 bar and 40 °C for at least 20 minutes in a Polymax 5. Curing under pressure reduces porosity and polymerization shrinkage.</p></div></li>
+      <li class="step"><span class="n">9</span><div class="step-body"><h3>Demold</h3>
+        <p>Follow the order the software verified: left half off to the left, right half off to the right, oral counter straight up, then lift the appliance off the model.</p></div></li>
+      <li class="step"><span class="n">10</span><div class="step-body"><h3>Finish</h3>
+        <ol>
+          <li>Cut the sprue and the vent rods flush.</li>
+          <li>Fill the six pin holes on the sides of the baton with fresh resin and pressure-cure again. The wire must not be exposed anywhere.</li>
+          <li>Trim, round and polish the rim. Bend the bows to shape.</li>
+        </ol></div></li>
+      <li class="step"><span class="n">11</span><div class="step-body"><h3>Quality check and release</h3>
+        <ul>
+          <li><strong>Plate thickness.</strong> Calipers should read at least 2.5 mm. Check the buccal rim separately: it was trimmed to vertical walls, which thins the last few millimetres.</li>
+          <li><strong>Baton.</strong> Thickness at least 3 mm, and its width never reduced by more than half (Tübingen QC).</li>
+          <li><strong>Wire.</strong> Not exposed anywhere, including at the filled pin holes.</li>
+          <li><strong>Fit.</strong> Seat the appliance on the printed working model, and next to a printed copy of the designed appliance.</li>
+          <li><strong>Release.</strong> Clean and disinfect according to the institution's protocol.</li>
+        </ul></div></li>
+    </ol>
+  </section>
+
+  <section id="checks" aria-labelledby="checks-h">
+    <h2 id="checks-h">What the software checks</h2>
+    <div class="prose">
+      <p>Every run checks that each part is a single watertight body, that the mold pieces do not overlap each other or intrude into the appliance, that the cavity is one connected space holding the whole appliance, and that the wire lies inside the appliance and clear of the pin slots.</p>
+      <p>The demolding test slides each piece along its pull direction in steps from 0.1 to 40 mm, past everything still in the flask. The overlap must stay within a tolerance of 2 mm³. The residual overlaps it absorbs are films a few microns thick where two surfaces touch, which is numerical noise rather than interference. These checks cover geometry only. They say nothing about how a real resin flows, shrinks or releases.</p>
+    </div>
+    <h3>All five test cases</h3>
+    <div class="table-wrap">
+      <table class="wide">
+        <thead><tr><th scope="col">Case</th><th scope="col">Baton</th><th scope="col">Mold block (mm)</th><th scope="col">Resin to mix</th><th scope="col">Rim trimmed</th><th scope="col">Checks</th></tr></thead>
+        <tbody>
+          <tr><td>Synthetic cleft maxilla</td><td>Parametric</td><td class="num">45.6 × 58.0 × 32.0</td><td class="num">4.8 ml</td><td class="num">282 mm³</td><td class="pass">All pass</td></tr>
+          <tr><td>Robin-sequence palate, published means</td><td>Parametric</td><td class="num">46.3 × 56.2 × 32.2</td><td class="num">4.5 ml</td><td class="num">279 mm³</td><td class="pass">All pass</td></tr>
+          <tr><td>Same palate, baton calibrated to the Tübingen drawing (shown above)</td><td>Parametric</td><td class="num">46.3 × 62.1 × 36.3</td><td class="num">5.0 ml</td><td class="num">279 mm³</td><td class="pass">All pass</td></tr>
+          <tr><td>Same palate, published Tübingen cleft baton</td><td>Tübingen STL</td><td class="num">46.3 × 61.0 × 38.9</td><td class="num">5.1 ml</td><td class="num">279 mm³</td><td class="pass">All pass</td></tr>
+          <tr><td>Same palate, published Tübingen no-cleft baton</td><td>Tübingen STL</td><td class="num">46.3 × 60.7 × 38.7</td><td class="num">5.1 ml</td><td class="num">279 mm³</td><td class="pass">All pass</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>The case shown on this page</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Check</th><th scope="col">Result</th></tr></thead>
+        <tbody>
+          <tr><td>All parts watertight, one body each</td><td class="num"><span class="pass">pass</span></td></tr>
+          <tr><td>Pieces do not overlap each other</td><td class="num"><span class="pass">pass</span> · 0.00 mm³</td></tr>
+          <tr><td>No piece intrudes into the appliance</td><td class="num"><span class="pass">pass</span> · 0.98 mm³</td></tr>
+          <tr><td>One connected cavity</td><td class="num"><span class="pass">pass</span></td></tr>
+          <tr><td>Appliance fully inside the cavity</td><td class="num"><span class="pass">pass</span> · 0.90 mm³</td></tr>
+          <tr><td>Pins clear of the wire</td><td class="num"><span class="pass">pass</span> · 0.00 mm³</td></tr>
+          <tr><td>Wire fully inside the appliance</td><td class="num"><span class="pass">pass</span> · 0.00 mm³</td></tr>
+          <tr><td>Left baton half comes free</td><td class="num"><span class="pass">pass</span> · max 1.09 mm³</td></tr>
+          <tr><td>Right baton half comes free</td><td class="num"><span class="pass">pass</span> · max 0.97 mm³</td></tr>
+          <tr><td>Oral counter comes free</td><td class="num"><span class="pass">pass</span> · max 0.73 mm³</td></tr>
+          <tr><td>Appliance comes free</td><td class="num"><span class="pass">pass</span> · max 0.00 mm³</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="differences" aria-labelledby="differences-h">
+    <h2 id="differences-h">Where the cast appliance differs from the digital design</h2>
+    <div class="prose">
+      <p><strong>Vertical rim.</strong> The plate is the palate surface offset by its thickness. On the buccal slope of the ridge that offset leans outward by up to 1.9 mm, which would lock the oral counter. The software trims the rim to vertical walls along the drawn outline, the way a technician trims a plate. This removed 10.6 to 11.6% of the plate volume in the test cases, all from the outer buccal edge, and the footprint on the tissue is unchanged.</p>
+      <p><strong>Pin holes.</strong> The pins leave six 2 mm holes in the sides of the baton, which are filled after demolding. Tübingen's own method also embeds the wire in a groove and covers it with fresh resin, so a post-fill is not new, but the bond should be checked on test pieces.</p>
+      <p><strong>One colour.</strong> A single pour gives one colour. Tübingen colour-codes the extension dark blue and the base by plate number. Two-colour casting is possible but not designed yet.</p>
+    </div>
+  </section>
+
+  <section id="questions" aria-labelledby="questions-h">
+    <h2 id="questions-h">Open questions for a clinical lab</h2>
+    <ol class="prose">
+      <li>Which cold-cure resin and fill technique to use: pour-type resin by syringe, or the current resin mixed thinner.</li>
+      <li>Which printed resin and separator pairing releases cleanly, tested on a scrap model and counter before a real case.</li>
+      <li>Whether the notched pins are acceptable for the safety wire, or whether Tübingen's groove-and-cover method on a pin-free cast is preferred.</li>
+      <li>Whether colour coding matters enough to design a two-stage pour.</li>
+      <li>Who prints the tooling, and what quality and regulatory framework applies to custom appliances made this way.</li>
+    </ol>
+  </section>
+
+  <section id="flexible" aria-labelledby="flexible-h">
+    <h2 id="flexible-h">Alternative: a flexible counter, like Tübingen's putty index</h2>
+    <div class="prose">
+      <p>Tübingen transfers the chosen prototype to the final plate with an A-silicone putty index of 86 Shore A. The closest printed equivalent is the whole counter as one piece, printed in a flexible resin such as Formlabs Silicone 40A, or printed rigid and used as the master for a silicone index.</p>
+      <p>A flexible counter peels off the curved baton without being split. It cannot hold the wire pins, so it pairs with Tübingen's groove-and-cover wire method. The software exports this variant but does not check it, because the demolding test only applies to rigid pieces.</p>
+    </div>
+  </section>
+
+  <section id="sources" aria-labelledby="sources-h">
+    <h2 id="sources-h">Sources</h2>
+    <ul class="prose">
+      <li>Aretxabaleta et al. 2025, complete Tübingen protocol, <em>Bioengineering</em> 12(10):1063 (CC BY 4.0), <a href="https://doi.org/10.3390/bioengineering12101063">doi.org/10.3390/bioengineering12101063</a>. Source of the materials, pressure-pot settings, wire, bows, putty index, colours, QC rules, the baton drawing and the published baton STLs.</li>
+      <li>Willershausen et al. 2024, <em>Orthod Craniofac Res</em> 27(S2):155-163, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11654354/">PMC11654354</a>. Source of the palate dimensions behind the synthetic model.</li>
+      <li>Liqcreate, <a href="https://www.liqcreate.com/product/ortho-acrylic-separation-model-3d-resin/">Ortho Acrylic Separation Model resin</a>.</li>
+      <li>Formlabs, <a href="https://dental.formlabs.com/indications/hawley-retainers/guide/">Hawley retainer workflow on printed models</a>, including separating media.</li>
+      <li>GoEngineer, <a href="https://www.goengineer.com/blog/stratasys-separator-dm-for-acrylic-orthodontic-appliances">Stratasys Separator DM for acrylic appliances on PolyJet models</a>.</li>
+      <li>Formlabs, <a href="https://formlabs.com/store/silicone-40a-resin">Silicone 40A resin</a>.</li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12703393/">Pressure-vessel curing of acrylic resins</a> (PMC12703393).</li>
+      <li><a href="https://www.jstage.jst.go.jp/article/prp/6/4/6_4_232/_article/-char/en">Pressure curing and polymerization shrinkage</a> (J-STAGE).</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Research and demonstration only. Not a medical device. Not printed, cast or clinically reviewed. Contains no patient data.</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const canvas = $('c'), note = $('viewer-note');
+  const say = t => { note.textContent = t; note.hidden = false; };
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!window.THREE) { say('The 3D library could not be loaded, so the mold cannot be shown. The written workflow below is complete without it.'); return; }
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true }); }
+  catch (e) { say('This browser could not start WebGL, so the mold cannot be shown. The written workflow below is complete without it.'); return; }
+  fetch('kit.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(start)
+    .catch(() => say('The mold data could not be loaded. Reload the page to try again.'));
+
+  function b64(s, T) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new T(u.buffer); }
+  function geom(P) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(b64(P.v, Float32Array), 3));
+    g.setIndex(new THREE.BufferAttribute(b64(P.f, Uint32Array), 1));
+    g.computeVertexNormals(); return g;
+  }
+
+  function start(DATA) {
+    note.hidden = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.localClippingEnabled = true;
+    const scene = new THREE.Scene();
+    const paintStage = () => { scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--stage').trim()); };
+    paintStage();
+    const camera = new THREE.PerspectiveCamera(35, 1, 1, 3000);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 0.62));
+    const key = new THREE.DirectionalLight(0xffffff, 0.68); key.position.set(80, -90, 160); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.26); fill.position.set(-90, 70, 40); scene.add(fill);
+    const grid = new THREE.GridHelper(200, 20, 0x888888, 0x555555); grid.rotation.x = Math.PI / 2; grid.material.opacity = 0.22; grid.material.transparent = true; scene.add(grid);
+
+    let raf = 0;
+    const draw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderer.render(scene, camera); }); };
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { paintStage(); draw(); });
+
+    const n = new THREE.Vector3(...DATA.split_normal), p0 = new THREE.Vector3(...DATA.split_point);
+    const clip = new THREE.Plane(n.clone().negate(), n.dot(p0));
+    const meshes = {};
+    for (const P of DATA.parts) {
+      const m = new THREE.Mesh(geom(P), new THREE.MeshStandardMaterial({ color: P.color, opacity: P.opacity, transparent: P.opacity < 1, depthWrite: P.opacity >= 1, polygonOffset: P.opacity < 1, polygonOffsetFactor: 1, polygonOffsetUnits: 1, roughness: 0.55, metalness: P.stem === 'safety_wire' ? 0.6 : 0.05, side: THREE.DoubleSide }));
+      m.visible = P.on; m.userData = P; m.renderOrder = P.opacity < 1 ? 2 : 1;
+      if (P.offset) m.position.set(...P.offset);
+      scene.add(m); meshes[P.stem] = m;
+      const row = document.createElement('label');
+      const box = document.createElement('input'); box.type = 'checkbox'; box.id = 'part-' + P.stem; box.checked = P.on;
+      box.onchange = () => { m.visible = box.checked; draw(); };
+      const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = P.color;
+      const name = document.createElement('span'); name.textContent = P.label;
+      row.append(box, sw, name); $('parts').appendChild(row);
+    }
+
+    const DIST = [42, 42, 56, 26], slider = $('demold');
+    let spread = 0;
+    function applyDemold() {
+      const s = parseFloat(slider.value);
+      for (const k in meshes) {
+        const P = meshes[k].userData; if (P.phase === null || P.phase === undefined) continue;
+        const off = new THREE.Vector3(...(P.offset || [0, 0, 0]));
+        const t = Math.min(1, Math.max(0, s - P.phase));
+        off.addScaledVector(new THREE.Vector3(...P.pull), t * DIST[P.phase]);
+        meshes[k].position.copy(off);
+      }
+      $('phase').textContent = DATA.phases[Math.min(4, Math.floor(s + 1e-6))] + (s % 1 > 0.02 && s < 4 ? ' …' : '');
+      spread = Math.min(1, s / 3);
+      updateCam();
+    }
+    slider.oninput = () => { stopAnim(); applyDemold(); };
+
+    let anim = 0;
+    const stopAnim = () => { if (anim) cancelAnimationFrame(anim); anim = 0; $('play').textContent = 'Play'; };
+    function goTo(v) {
+      stopAnim();
+      if (reduced) { slider.value = v; applyDemold(); return; }
+      const from = parseFloat(slider.value), t0 = performance.now(), ms = 300 + 220 * Math.abs(v - from);
+      const step = now => { const k = Math.min(1, (now - t0) / ms); slider.value = from + (v - from) * k * (2 - k); applyDemold(); anim = k < 1 ? requestAnimationFrame(step) : 0; };
+      anim = requestAnimationFrame(step);
+    }
+    $('play').onclick = () => {
+      if (anim) { stopAnim(); return; }
+      if (parseFloat(slider.value) >= 4) slider.value = 0;
+      if (reduced) { slider.value = 4; applyDemold(); return; }
+      $('play').textContent = 'Pause';
+      const step = () => { slider.value = Math.min(4, parseFloat(slider.value) + 0.012); applyDemold(); if (parseFloat(slider.value) < 4) anim = requestAnimationFrame(step); else stopAnim(); };
+      anim = requestAnimationFrame(step);
+    };
+
+    let cut = false;
+    function setCut(on) {
+      cut = on; $('cut').setAttribute('aria-pressed', String(on));
+      for (const k of ['working_model', 'counter_oral', 'counter_left', 'counter_right', 'cradle', 'device_master']) if (meshes[k]) { meshes[k].material.clippingPlanes = on ? [clip] : []; meshes[k].material.needsUpdate = true; }
+      draw();
+    }
+    $('cut').onclick = () => setCut(!cut);
+
+    const c = DATA.center, target = new THREE.Vector3(c[0], c[1], c[2]);
+    let theta = -1.0, phi = 1.05, dist = 190;
+    function updateCam() { const d = dist * (1 + 0.28 * spread), z = target.z + 20 * spread; camera.position.set(target.x + d * Math.sin(phi) * Math.cos(theta), target.y + d * Math.sin(phi) * Math.sin(theta), z + d * Math.cos(phi)); camera.up.set(0, 0, 1); camera.lookAt(target.x, target.y, z); draw(); }
+    const views = { iso: [-1.0, 1.05], front: [-Math.PI / 2, Math.PI / 2], side: [Math.PI, Math.PI / 2], top: [-Math.PI / 2, 0.02] };
+    const setView = v => { [theta, phi] = views[v]; target.set(c[0], c[1], c[2]); updateCam(); };
+    document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+    const zoom = f => { dist = Math.min(900, Math.max(40, dist * f)); updateCam(); };
+    document.querySelectorAll('[data-zoom]').forEach(b => b.onclick = () => zoom(parseFloat(b.dataset.zoom)));
+
+    const toViewer = () => $('mold').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    document.querySelectorAll('[data-phase]').forEach(b => b.onclick = () => { setCut(false); toViewer(); goTo(parseFloat(b.dataset.phase)); });
+    $('show-wire').onclick = () => { toViewer(); goTo(0); setCut(true); theta = 0; phi = Math.PI / 2; target.set(c[0], c[1], c[2]); updateCam(); };
+
+    let drag = null;
+    canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, pan: e.shiftKey }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove', e => {
+      if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+      if (drag.pan) { const r = new THREE.Vector3(); camera.getWorldDirection(r); const right = new THREE.Vector3().crossVectors(r, camera.up).normalize(); const up = new THREE.Vector3().crossVectors(right, r).normalize(); target.addScaledVector(right, -dx * dist * 0.0015); target.addScaledVector(up, dy * dist * 0.0015); }
+      else { theta -= dx * 0.008; phi = Math.min(Math.PI - 0.02, Math.max(0.02, phi - dy * 0.008)); }
+      updateCam();
+    });
+    const endDrag = () => { drag = null; };
+    canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+    canvas.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoom(1 + e.deltaY * 0.004); }, { passive: false });
+
+    function resize() {
+      const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); draw();
+    }
+    new ResizeObserver(resize).observe(canvas.parentElement);
+    dist = 190 * Math.max(1, 1.25 / Math.max(0.5, canvas.clientWidth / Math.max(1, canvas.clientHeight)));
+    resize(); updateCam(); applyDemold();
+  }
+})();
+</script>
+</body>
+</html>
